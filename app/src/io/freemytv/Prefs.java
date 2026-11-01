@@ -25,7 +25,8 @@ final class Prefs {
     private Prefs() {}
 
     /** Remote keys we handle, with the app each opens until the user picks another. Codes read from the TCL's log. */
-    static final int KEY_NETFLIX = 4062, KEY_YOUTUBE = 190, KEY_PRIME = 4099, KEY_TCL_CHANNEL = 4020;
+    static final int KEY_NETFLIX = 4062, KEY_YOUTUBE = 190, KEY_PRIME = 4099, KEY_TCL_CHANNEL = 4020,
+            KEY_TCL_GLOBOPLAY = 4097;
     /** TCL's Settings button: NOTIFICATION, which only Google TV's home app (off in our mode) answers. */
     static final int KEY_TCL_SETTINGS = KeyEvent.KEYCODE_NOTIFICATION;
     /** A TCL Settings button's value that opens our quick settings panel over what's playing. */
@@ -98,7 +99,7 @@ final class Prefs {
             : RemoteKeys.XIAOMI_PATCHWALL_ONLY ? new int[] {KEY_XIAOMI_PATCHWALL}
             : RemoteKeys.XIAOMI ? new int[] {KEY_MI, KEY_YOUTUBE, KEY_XIAOMI_PATCHWALL, KEY_XIAOMI_OKKO, KEY_XIAOMI_VK,
                     KEY_XIAOMI_RUTUBE, KEY_XIAOMI_KION, KEY_XIAOMI_WINK, KEY_XIAOMI_IVI}
-            : new int[] {KEY_NETFLIX, KEY_YOUTUBE, KEY_PRIME, KEY_TCL_CHANNEL, KEY_TCL_SETTINGS};
+            : new int[] {KEY_NETFLIX, KEY_YOUTUBE, KEY_PRIME, KEY_TCL_CHANNEL, KEY_TCL_SETTINGS, KEY_TCL_GLOBOPLAY};
 
     /** Bumped by every change: screens compare it to know when to redraw. */
     static volatile int version;

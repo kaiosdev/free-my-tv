@@ -4,6 +4,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.InputDevice;
 import android.view.KeyEvent;
 
@@ -66,6 +68,7 @@ final class RemoteKeys {
 
     /** Xiaomi's remote sends one press as a burst of separate presses: a press this soon after the last one is the same. */
     private static final long BURST_MS = 1000;
+    private static final long GLOBOPLAY_WAIT_MS = 700;
     private static int lastKey;
     private static long lastDown;
 
@@ -133,11 +136,18 @@ final class RemoteKeys {
             AppLog.w("remote key " + e.getKeyCode() + " -> " + pkg + (intent == null ? " (not installed)" : ""));
             // Consumed even when it doesn't open: its key-up is ours too, and a key-down alone would reach the TV.
             if (intent != null) {
-                try {
-                    c.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-                } catch (android.content.ActivityNotFoundException | SecurityException ex) {
-                    AppLog.w("remote target unavailable: " + pkg);
-                }
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                // TCL's own function for this key runs first and opens Globoplay (or its Play Store page): ours goes after it.
+                long wait = TCL && keyCode == Prefs.KEY_TCL_GLOBOPLAY ? GLOBOPLAY_WAIT_MS : 0;
+                Runnable open = () -> {
+                    try {
+                        c.startActivity(intent);
+                    } catch (android.content.ActivityNotFoundException | SecurityException ex) {
+                        AppLog.w("remote target unavailable: " + pkg);
+                    }
+                };
+                if (wait > 0) new Handler(Looper.getMainLooper()).postDelayed(open, wait);
+                else open.run();
             }
         }
         return true;
