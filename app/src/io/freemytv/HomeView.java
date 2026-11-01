@@ -368,7 +368,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
     private int textPrefs = -1;
     private boolean clock24;
     private String textLanguage;
-    private String weatherTitle, nowTemp, highLow, sunriseText, sunsetText, staleText;
+    private String weatherTitle, nowTemp, highLow, sunriseText, sunsetText, airText, staleText;
     private final String[] hourText = new String[6], hourTempText = new String[6];
     private final String[] dayText = new String[5], dayMaxText = new String[5], dayMinText = new String[5];
     private boolean textDays;   // the weather card shows the next days (Home Settings → Forecast) and has them
@@ -2260,8 +2260,20 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         }
         float sx = hx, base = r.top + 258 * k;
         if (wx.sunrise != 0) sx = sunItem(c, "sunrise", sunriseText, sx, base) + 36 * k;
-        if (wx.sunset != 0) sunItem(c, "sunset", sunsetText, sx, base);
+        if (wx.sunset != 0) sx = sunItem(c, "sunset", sunsetText, sx, base) + 36 * k;
+        // The air quality: a dot in the color of its level, then the words, when there is room left in the card.
+        if (wx.aqi >= 0) {
+            float dot = 8 * k, w = cardDim.measureText(airText);
+            if (sx + 2 * dot + 10 * k + w < r.right - 20 * k) {
+                fill.setShader(null);
+                fill.setColor(AIR_COLORS[HomeData.airLevel(wx.aqi)]);
+                c.drawCircle(sx + dot, base - Ui.halfCap(cardDim), dot, fill);
+                c.drawText(airText, sx + 2 * dot + 10 * k, base, cardDim);
+            }
+        }
     }
+
+    private static final int[] AIR_COLORS = {0xFF34C759, 0xFFFFCC00, 0xFFFF9500, 0xFFFF3B30, 0xFFAF52DE, 0xFF8E1B3A};
 
     private void refreshDrawerText() {
         HomeData.Weather wx = data.weather;
@@ -2285,6 +2297,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
             }
             sunriseText = Ui.trf("Sunrise {time}", "time", Ui.time(wx.sunrise));
             sunsetText = Ui.trf("Sunset {time}", "time", Ui.time(wx.sunset));
+            airText = wx.aqi >= 0 ? HomeData.airText(wx.aqi) : "";
         }
         long minute = System.currentTimeMillis() / 60_000;
         if (data.pricesAt != textPricesAt || minute != textMinute || settings) {
@@ -3942,6 +3955,7 @@ final class HomeView extends ViewGroup implements Choreographer.FrameCallback, H
         }
         if (wx.sunrise != 0) s.append(' ').append(Ui.trf("talkback|Sunrise {time}", "time", Ui.time(wx.sunrise))).append('.');
         if (wx.sunset != 0) s.append(' ').append(Ui.trf("Sunset {time}", "time", Ui.time(wx.sunset))).append('.');
+        if (wx.aqi >= 0) s.append(' ').append(HomeData.airText(wx.aqi)).append('.');
         return s.toString();
     }
 
