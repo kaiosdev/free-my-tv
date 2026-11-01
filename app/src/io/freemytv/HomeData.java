@@ -55,6 +55,17 @@ final class HomeData {
         return Prefs.latitude() + "," + Prefs.longitude();
     }
 
+    /** What the cached forecast was fetched with: the forecast's query and the air quality's, so one of them changing fetches again. */
+    private static final String WEATHER_FETCH = WEATHER_QUERY + "&air=us_aqi";
+
+    private static String airUrl() {
+        return "https://air-quality-api.open-meteo.com/v1/air-quality?latitude=" + Prefs.latitude() + "&longitude=" + Prefs.longitude()
+                + "&current=us_aqi&timezone=auto";
+    }
+
+    /** The air quality is kept for this long past its fetch: an older one isn't shown (the TV was off, or it's offline). */
+    private static final long AIR_KEEP = 3 * 3600_000L;
+
     private static String weatherUrl() {
         return "https://api.open-meteo.com/v1/forecast?latitude=" + Prefs.latitude() + "&longitude=" + Prefs.longitude() + WEATHER_QUERY;
     }
@@ -139,6 +150,7 @@ final class HomeData {
         int code = -1;
         boolean isDay = true;
         long sunrise, sunset;   // today's, in epoch ms
+        int aqi = -1;   // the US air quality index now, -1 when unknown
         // Next hours (starting at the next full hour): time, temperature, code and day/night.
         final List<Long> hours = new ArrayList<>();
         final List<Double> hourTemp = new ArrayList<>();
@@ -187,8 +199,9 @@ final class HomeData {
             if (w != null && weatherPlace().equals(cache.getString("weatherPlace", ""))) {
                 weather = parseWeather(w);
                 // Fetched with another query (an older version): shown, and fetched again now.
-                weatherAt = WEATHER_QUERY.equals(cache.getString("weatherQuery", "")) ? cache.getLong("weatherAt", 0) : 0;
+                weatherAt = WEATHER_FETCH.equals(cache.getString("weatherQuery", "")) ? cache.getLong("weatherAt", 0) : 0;
                 weatherFor = weatherPlace();
+                if (System.currentTimeMillis() - cache.getLong("airAt", 0) < AIR_KEEP) weather.aqi = parseAir(cache.getString("air", ""));
             }
         } catch (Exception ignored) {}
         // As for the picks: a fetch made before the Wi-Fi is up (the TV just started) is tried again when it comes.
@@ -253,11 +266,20 @@ final class HomeData {
                 try {
                     String place = weatherPlace();
                     String body = get(weatherUrl());
-                    weather = parseWeather(body);
+                    Weather fresh = parseWeather(body);
+                    // The air quality is a second request: when it fails the forecast still shows, without it.
+                    try {
+                        String air = get(airUrl());
+                        fresh.aqi = parseAir(air);
+                        cache.edit().putString("air", air).putLong("airAt", System.currentTimeMillis()).apply();
+                    } catch (Exception e) {
+                        AppLog.w("air quality: " + e.getMessage());
+                    }
+                    weather = fresh;
                     weatherAt = System.currentTimeMillis();
                     weatherFor = place;
                     cache.edit().putString("weather", body).putLong("weatherAt", weatherAt).putString("weatherPlace", place)
-                            .putString("weatherQuery", WEATHER_QUERY).apply();
+                            .putString("weatherQuery", WEATHER_FETCH).apply();
                     notifyListeners();
                 } catch (Exception e) {
                     weatherFailedAt = System.currentTimeMillis();
@@ -354,6 +376,27 @@ final class HomeData {
             w.dayCode.add(codes.optInt(i, -1));
         }
         return w;
+    }
+
+    /** The US air quality index of Open-Meteo's answer, or -1 when it has none. */
+    static int parseAir(String body) {
+        try {
+            double v = new JSONObject(body).getJSONObject("current").optDouble("us_aqi", Double.NaN);
+            return Double.isNaN(v) || v < 0 ? -1 : (int) Math.round(v);
+        } catch (Exception e) {
+            return -1;
+        }
+    }
+
+    /** 0 good, 1 moderate, 2 unhealthy for sensitive groups, 3 unhealthy, 4 very unhealthy, 5 hazardous (the US bands). */
+    static int airLevel(int aqi) {
+        return aqi <= 50 ? 0 : aqi <= 100 ? 1 : aqi <= 150 ? 2 : aqi <= 200 ? 3 : aqi <= 300 ? 4 : 5;
+    }
+
+    static String airText(int aqi) {
+        String[] names = {Ui.tr("air|Good"), Ui.tr("air|Moderate"), Ui.tr("air|Sensitive"), Ui.tr("air|Unhealthy"),
+                Ui.tr("air|Very unhealthy"), Ui.tr("air|Hazardous")};
+        return Ui.trf("Air: {level} {n}", "level", names[airLevel(aqi)], "n", aqi);
     }
 
     private static long localTime(String iso, TimeZone zone) throws ParseException {
