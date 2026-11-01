@@ -1320,7 +1320,8 @@ public class SettingsActivity extends Activity {
                     Ui.tr("Prime Video button"), Ui.tr("YouTube button"),
                     Ui.tr("Crunchyroll button"), Ui.tr("Google Play button"), Ui.tr("SonyLIV button")};
             return new String[] {Ui.tr("Netflix button"), Ui.tr("YouTube button"),
-                    Ui.tr("Prime Video button"), Ui.tr("TCL Channel button"), Ui.tr("Settings button")};
+                    Ui.tr("Prime Video button"), Ui.tr("TCL Channel button"), Ui.tr("Settings button"),
+                    Ui.tr("Globoplay button")};
         }
 
         private String[] keyValues() {
@@ -2339,7 +2340,7 @@ public class SettingsActivity extends Activity {
                         : RemoteKeys.XIAOMI ? Ui.tr("Xiaomi default: the button opens what it always did.")
                         : RemoteKeys.HISENSE ? Ui.tr("Netflix: the TV itself controls that button.")
                         : RemoteKeys.GOOGLE_STREAMER ? Ui.tr("The other buttons: the TV itself controls them.")
-                        : RemoteKeys.supported() ? Ui.tr("Disney and Globoplay: the TV itself controls those buttons.")
+                        : RemoteKeys.supported() ? Ui.tr("Disney: the TV itself controls that button.")
                         : Ui.tr("TCL remote buttons: on this TV they work as always."), LIST_X * k + 30 * k, hy + 38 * k, hint);
                 // No key service on this TV (RemoteKeys.FILTER_SAFE): inside other apps the buttons do nothing.
                 if (!RemoteKeys.FILTER_SAFE) c.drawText(Ui.tr("On this TV they work on Free My TV's home screen only."),
